@@ -450,8 +450,6 @@
 		Goto RemoveSplitTunnelDriver_return
 	${EndIf}
 	
-	RemoveSplitTunnelDriver_success:
-	
 	log::Log "RemoveSplitTunnelDriver() completed successfully"
 
 	Push 0
