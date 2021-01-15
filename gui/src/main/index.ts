@@ -1241,7 +1241,9 @@ class ApplicationMain {
     IpcMainEventChannel.app.handleQuit(() => app.quit());
     IpcMainEventChannel.app.handleOpenUrl((url) => shell.openExternal(url));
     IpcMainEventChannel.app.handleOpenPath((path) => shell.openPath(path));
-    IpcMainEventChannel.app.handleShowOpenDialog((options) => dialog.showOpenDialog(options));
+    IpcMainEventChannel.app.handleShowOpenDialog((options) =>
+      dialog.showOpenDialog({ defaultPath: app.getPath('home'), ...options }),
+    );
   }
 
   private async createNewAccount(): Promise<string> {

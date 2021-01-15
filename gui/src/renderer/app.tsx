@@ -436,8 +436,8 @@ export default class AppRenderer {
     consumePromise(IpcRendererEventChannel.linuxSplitTunneling.launchApplication(application));
   }
 
-  public setSplitTunnelingState(enabled: boolean) {
-    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.setState(enabled));
+  public setSplitTunnelingState(enabled: boolean): Promise<void> {
+    return IpcRendererEventChannel.windowsSplitTunneling.setState(enabled);
   }
 
   public addSplitTunnelingApplication(application: IApplication | string) {
