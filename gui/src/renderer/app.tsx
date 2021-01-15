@@ -16,9 +16,9 @@ import userInterfaceActions from './redux/userinterface/actions';
 import versionActions from './redux/version/actions';
 
 import { ICurrentAppVersionInfo } from '../shared/ipc-types';
-import { ILinuxSplitTunnelingApplication } from '../shared/application-types';
-import { messages, relayLocations } from '../shared/gettext';
+import { IApplication, ILinuxSplitTunnelingApplication } from '../shared/application-types';
 import { IGuiSettingsState, SYSTEM_PREFERRED_LOCALE_KEY } from '../shared/gui-settings-state';
+import { messages, relayLocations } from '../shared/gettext';
 import log, { ConsoleOutput } from '../shared/logging';
 import { IRelayListPair } from '../shared/ipc-schema';
 import consumePromise from '../shared/promise';
@@ -168,6 +168,10 @@ export default class AppRenderer {
       this.reduxActions.settings.setWireguardKeygenEvent(event);
     });
 
+    IpcRendererEventChannel.windowsSplitTunneling.listen((applications: IApplication[]) => {
+      this.reduxActions.settings.setSplitTunnelingApplications(applications);
+    });
+
     IpcRendererEventChannel.windowFocus.listen((focus: boolean) => {
       this.reduxActions.userInterface.setWindowFocused(focus);
     });
@@ -210,6 +214,12 @@ export default class AppRenderer {
 
     if (initialState.isConnected) {
       consumePromise(this.onDaemonConnected());
+    }
+
+    if (initialState.windowsSplitTunnelingApplications) {
+      this.reduxActions.settings.setSplitTunnelingApplications(
+        initialState.windowsSplitTunnelingApplications,
+      );
     }
   }
 
@@ -414,12 +424,28 @@ export default class AppRenderer {
     actions.settings.setWireguardKeygenEvent(keygenEvent);
   }
 
-  public getSplitTunnelingApplications() {
-    return IpcRendererEventChannel.splitTunneling.getApplications();
+  public getLinuxSplitTunnelingApplications() {
+    return IpcRendererEventChannel.linuxSplitTunneling.getApplications();
+  }
+
+  public getWindowsSplitTunnelingApplications() {
+    return IpcRendererEventChannel.windowsSplitTunneling.getApplications();
   }
 
   public launchExcludedApplication(application: ILinuxSplitTunnelingApplication | string) {
-    consumePromise(IpcRendererEventChannel.splitTunneling.launchApplication(application));
+    consumePromise(IpcRendererEventChannel.linuxSplitTunneling.launchApplication(application));
+  }
+
+  public setSplitTunnelingState(enabled: boolean) {
+    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.setState(enabled));
+  }
+
+  public addSplitTunnelingApplication(application: IApplication | string) {
+    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.addApplication(application));
+  }
+
+  public removeSplitTunnelingApplication(application: IApplication | string) {
+    consumePromise(IpcRendererEventChannel.windowsSplitTunneling.removeApplication(application));
   }
 
   public collectProblemReport(toRedact: string[]): Promise<string> {
@@ -655,6 +681,7 @@ export default class AppRenderer {
     reduxSettings.updateWireguardMtu(newSettings.tunnelOptions.wireguard.mtu);
     reduxSettings.updateBridgeState(newSettings.bridgeState);
     reduxSettings.updateDnsOptions(newSettings.tunnelOptions.dns);
+    reduxSettings.updateSplitTunneling(newSettings.splitTunnel);
 
     this.setRelaySettings(newSettings.relaySettings);
     this.setBridgeSettings(newSettings.bridgeSettings);
