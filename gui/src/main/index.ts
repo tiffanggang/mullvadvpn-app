@@ -15,6 +15,7 @@ import * as path from 'path';
 import { sprintf } from 'sprintf-js';
 import * as uuid from 'uuid';
 import { hasExpired } from '../shared/account-expiry';
+import { IApplication } from '../shared/application-types';
 import BridgeSettingsBuilder from '../shared/bridge-settings-builder';
 import {
   AccountToken,
@@ -74,8 +75,9 @@ import TrayIconController, { TrayIconType } from './tray-icon-controller';
 import WindowController from './window-controller';
 import { ITranslations } from '../shared/ipc-schema';
 
-// Only import when running app on Linux.
+// Only import split tunneling library on correct OS.
 const linuxSplitTunneling = process.platform === 'linux' && require('./linux-split-tunneling');
+const windowsSplitTunneling = process.platform === 'win32' && require('./windows-split-tunneling');
 
 const DAEMON_RPC_PATH =
   process.platform === 'win32' ? 'unix:////./pipe/Mullvad VPN' : 'unix:///var/run/mullvad-vpn';
@@ -121,6 +123,8 @@ class ApplicationMain {
     autoConnect: false,
     blockWhenDisconnected: false,
     showBetaReleases: false,
+    splitTunnel: false,
+    splitTunnelAppsList: [],
     relaySettings: {
       normal: {
         location: 'any',
@@ -203,6 +207,8 @@ class ApplicationMain {
 
   private rendererLog?: Logger;
   private translations: ITranslations = { locale: this.locale };
+
+  private windowsSplitTunnelingApplications?: IApplication[];
 
   public run() {
     // Remove window animations to combat window flickering when opening window. Can be removed when
@@ -503,7 +509,7 @@ class ApplicationMain {
 
     // fetch settings
     try {
-      this.setSettings(await this.daemonRpc.getSettings());
+      await this.setSettings(await this.daemonRpc.getSettings());
     } catch (error) {
       log.error(`Failed to fetch settings: ${error.message}`);
 
@@ -626,7 +632,7 @@ class ApplicationMain {
         if ('tunnelState' in daemonEvent) {
           this.setTunnelState(daemonEvent.tunnelState);
         } else if ('settings' in daemonEvent) {
-          this.setSettings(daemonEvent.settings);
+          consumePromise(this.setSettings(daemonEvent.settings));
         } else if ('relayList' in daemonEvent) {
           this.setRelays(
             daemonEvent.relayList,
@@ -713,7 +719,7 @@ class ApplicationMain {
     }
   }
 
-  private setSettings(newSettings: ISettings) {
+  private async setSettings(newSettings: ISettings) {
     const oldSettings = this.settings;
     this.settings = newSettings;
 
@@ -733,11 +739,26 @@ class ApplicationMain {
 
     if (this.windowController) {
       IpcMainEventChannel.settings.notify(this.windowController.webContents, newSettings);
+
+      if (windowsSplitTunneling) {
+        consumePromise(this.updateSplitTunnelingApplications(newSettings.splitTunnelAppsList));
+      }
     }
 
     // since settings can have the relay constraints changed, the relay
     // list should also be updated
     this.setRelays(this.relays, newSettings.relaySettings, newSettings.bridgeState);
+  }
+
+  private async updateSplitTunnelingApplications(appList: string[]): Promise<void> {
+    const apps = await windowsSplitTunneling.getApplications({
+      applicationPaths: appList,
+    });
+    this.windowsSplitTunnelingApplications = apps;
+
+    if (this.windowController) {
+      IpcMainEventChannel.windowsSplitTunneling.notify(this.windowController.webContents, apps);
+    }
   }
 
   private setLocation(newLocation: ILocation) {
@@ -1022,6 +1043,7 @@ class ApplicationMain {
       translations: this.translations,
       platform: process.platform,
       runningInDevelopment: process.env.NODE_ENV === 'development',
+      windowsSplitTunnelingApplications: this.windowsSplitTunnelingApplications,
     }));
 
     IpcMainEventChannel.settings.handleSetAllowLan((allowLan: boolean) =>
@@ -1114,19 +1136,56 @@ class ApplicationMain {
     });
     IpcMainEventChannel.wireguardKeys.handleVerifyKey(() => this.daemonRpc.verifyWireguardKey());
 
-    IpcMainEventChannel.splitTunneling.handleGetApplications(() => {
+    IpcMainEventChannel.linuxSplitTunneling.handleGetApplications(() => {
       if (linuxSplitTunneling) {
         return linuxSplitTunneling.getApplications(this.locale);
       } else {
-        throw Error('linuxSplitTunneling called without being imported');
+        throw Error('linuxSplitTunneling.getApplications function called without being imported');
       }
     });
-    IpcMainEventChannel.splitTunneling.handleLaunchApplication((application) => {
+    IpcMainEventChannel.windowsSplitTunneling.handleGetApplications(() => {
+      if (windowsSplitTunneling) {
+        return windowsSplitTunneling.getApplications({ noCache: true });
+      } else {
+        throw Error('windowsSplitTunneling.getApplications function called without being imported');
+      }
+    });
+    IpcMainEventChannel.linuxSplitTunneling.handleLaunchApplication((application) => {
       if (linuxSplitTunneling) {
         linuxSplitTunneling.launchApplication(application);
         return Promise.resolve();
       } else {
-        throw Error('linuxSplitTunneling called without being imported');
+        throw Error('linuxSplitTunneling.launchApplication function called without being imported');
+      }
+    });
+
+    IpcMainEventChannel.windowsSplitTunneling.handleSetState((enabled) => {
+      if (windowsSplitTunneling) {
+        return this.daemonRpc.setSplitTunnelingState(enabled);
+      } else {
+        throw Error('windowsSplitTunneling.setState function called without being imported');
+      }
+    });
+    IpcMainEventChannel.windowsSplitTunneling.handleAddApplication((application) => {
+      if (windowsSplitTunneling) {
+        return this.daemonRpc.addSplitTunnelingApplication(
+          typeof application === 'string' ? application : application.absolutepath,
+        );
+      } else {
+        throw Error(
+          'windowsSplitTunneling.handleAddApplication function called without being imported',
+        );
+      }
+    });
+    IpcMainEventChannel.windowsSplitTunneling.handleRemoveApplication((application) => {
+      if (windowsSplitTunneling) {
+        return this.daemonRpc.removeSplitTunnelingApplication(
+          typeof application === 'string' ? application : application.absolutepath,
+        );
+      } else {
+        throw Error(
+          'windowsSplitTunneling.handleRemoveApplication function called without being imported',
+        );
       }
     });
 
