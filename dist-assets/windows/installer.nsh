@@ -147,6 +147,7 @@
 !macroend
 !define InstallWin7Hotfix '!insertmacro "InstallWin7Hotfix"'
 
+#
 # ExtractSplitTunnelDriver
 #
 # Extract split tunnel driver and associated files into $TEMP\mullvad-split-tunnel
@@ -155,7 +156,12 @@
 
 	SetOutPath "$TEMP\mullvad-split-tunnel"
 
-	File "${BUILD_RESOURCES_DIR}\binaries\x86_64-pc-windows-msvc\split-tunnel\*"
+	${If} ${AtLeastWin10}
+		File "${BUILD_RESOURCES_DIR}\binaries\x86_64-pc-windows-msvc\split-tunnel\win10\*"
+	${Else}
+		File "${BUILD_RESOURCES_DIR}\binaries\x86_64-pc-windows-msvc\split-tunnel\legacy\*"
+	${EndIf}
+
 	File "${BUILD_RESOURCES_DIR}\..\windows\driverlogic\bin\x64-Release\driverlogic.exe"
 
 !macroend
@@ -318,7 +324,7 @@
 	${IfNot} ${AtLeastWin10}
 		log::Log "Adding Split Tunnel driver certificate to certificate store"
 
-		nsExec::ExecToStack '"$SYSDIR\certutil.exe" -f -addstore TrustedPublisher "$TEMP\mullvad-split-tunnel\driver.cer"'
+		nsExec::ExecToStack '"$SYSDIR\certutil.exe" -f -addstore TrustedPublisher "$TEMP\mullvad-split-tunnel\mullvad-ev.cer"'
 		Pop $0
 		Pop $1
 
