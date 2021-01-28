@@ -260,8 +260,7 @@
 
 		StrCpy $0 $1 $2 $0
 
-		StrCpy $R0 "Service error code: $0"
-		log::Log $R0
+		log::Log "Service error code: $0"
 
 		#
 		# Forcibly kill old process if stuck
