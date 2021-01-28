@@ -242,7 +242,7 @@
 		Pop $0
 
 		${If} $0 == -1
-			log::Log "Failed to parse service error"
+			log::Log "Failed to parse service error (1)"
 			Goto InstallService_return
 		${EndIf}
 
@@ -254,7 +254,7 @@
 		IntOp $2 $2 - $0
 
 		${If} $2 < 1
-			log::Log "Failed to parse service error"
+			log::Log "Failed to parse service error (2)"
 			Goto InstallService_return
 		${EndIf}
 
