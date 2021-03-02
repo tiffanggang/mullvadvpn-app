@@ -114,7 +114,7 @@ impl ConnectedState {
                 &self.tunnel_parameters,
             ),
             #[cfg(target_os = "linux")]
-            use_fwmark: self.tunnel_parameters.get_proxy_endpoint().is_none(),
+            use_fwmark: self.tunnel_parameters.supports_fwmark(),
         }
     }
 

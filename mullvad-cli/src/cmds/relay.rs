@@ -54,18 +54,27 @@ impl Command for Relay {
                                         .index(2),
                                 )
                                 .arg(
+                                    clap::Arg::with_name("protocol")
+                                        .help("Transport protocol")
+                                        .index(3)
+                                        .default_value("udp")
+                                        .possible_values(&["udp", "tcp"])
+                                        .required(false),
+                                )
+                                .arg(
                                     clap::Arg::with_name("peer-key")
                                         .help("Base64 encoded peer public key")
-                                        .index(3)
+                                        .index(4)
                                         .required(false),
                                 )
                                 .arg(
                                     clap::Arg::with_name("v4-gateway")
                                         .help("IPv4 gateway address")
                                         .long("v4-gateway")
-                                        .index(4)
+                                        .index(5)
                                         .required(false),
-                                ).arg(
+                                )
+                                .arg(
                                     clap::Arg::with_name("v6-gateway")
                                         .help("IPv6 gateway address")
                                         .long("v6-gateway")
@@ -79,7 +88,7 @@ impl Command for Relay {
                                         .takes_value(true)
                                         .multiple(true)
                                         .required(false),
-                                ),
+                                )
                             )
                             .subcommand(clap::SubCommand::with_name("openvpn")
                                 .arg(
@@ -96,7 +105,7 @@ impl Command for Relay {
                                 )
                                 .arg(
                                     clap::Arg::with_name("protocol")
-                                        .help("Transport protocol. For Wireguard this is ignored.")
+                                        .help("Transport protocol")
                                         .index(3)
                                         .default_value("udp")
                                         .possible_values(&["udp", "tcp"]),
@@ -248,15 +257,7 @@ impl Relay {
         let password = value_t!(matches.value_of("password"), String).unwrap_or_else(|e| e.exit());
         let protocol = value_t!(matches.value_of("protocol"), String).unwrap_or_else(|e| e.exit());
 
-        let protocol = match protocol.as_str() {
-            "udp" => TransportProtocol::Udp,
-            "tcp" => TransportProtocol::Tcp,
-            _ => clap::Error::with_description(
-                "unknown transport protocol",
-                clap::ErrorKind::ValueValidation,
-            )
-            .exit(),
-        };
+        let protocol = Self::validate_transport_protocol(&protocol);
 
         CustomRelaySettings {
             host,
@@ -288,6 +289,8 @@ impl Relay {
                 _ => e.exit(),
             },
         };
+        let protocol = value_t!(matches.value_of("protocol"), String).unwrap_or_else(|e| e.exit());
+        let protocol = Self::validate_transport_protocol(&protocol);
         let mut private_key_str = String::new();
         println!("Reading private key from standard input");
         let _ = io::stdin().lock().read_line(&mut private_key_str);
@@ -316,6 +319,7 @@ impl Relay {
                             .collect(),
                         endpoint: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port)
                             .to_string(),
+                        protocol: protocol as i32,
                     }),
                     ipv4_gateway: ipv4_gateway.to_string(),
                     ipv6_gateway: ipv6_gateway
@@ -344,6 +348,18 @@ impl Relay {
 
         key.copy_from_slice(&key_bytes);
         key
+    }
+
+    fn validate_transport_protocol(protocol: &str) -> TransportProtocol {
+        match protocol {
+            "udp" => TransportProtocol::Udp,
+            "tcp" => TransportProtocol::Tcp,
+            _ => clap::Error::with_description(
+                "unknown transport protocol",
+                clap::ErrorKind::ValueValidation,
+            )
+            .exit(),
+        }
     }
 
     async fn set_hostname(&self, matches: &clap::ArgMatches<'_>) -> Result<()> {

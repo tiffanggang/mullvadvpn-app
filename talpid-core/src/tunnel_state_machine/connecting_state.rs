@@ -70,7 +70,7 @@ impl ConnectingState {
             #[cfg(windows)]
             relay_client: TunnelMonitor::get_relay_client(&shared_values.resource_dir, &params),
             #[cfg(target_os = "linux")]
-            use_fwmark: params.get_proxy_endpoint().is_none(),
+            use_fwmark: params.supports_fwmark(),
         };
         shared_values
             .firewall

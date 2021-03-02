@@ -62,6 +62,15 @@ impl TunnelParameters {
             TunnelParameters::Wireguard(params) => &params.generic_options,
         }
     }
+
+    #[cfg(target_os = "linux")]
+    pub fn supports_fwmark(&self) -> bool {
+        match self {
+            // TODO: Is it even needed with shadowsocks?
+            TunnelParameters::OpenVpn(params) => params.proxy.is_none(),
+            TunnelParameters::Wireguard(_) => true,
+        }
+    }
 }
 
 impl From<wireguard::TunnelParameters> for TunnelParameters {

@@ -26,7 +26,8 @@ talpid-types = { path = "../talpid-types" }
 uuid = { version = "0.8", features = ["v4"] }
 zeroize = "1"
 chrono = "0.4"
-tokio = { version = "0.2", features =  [ "process", "rt-threaded", "stream" ] }
+tokio = { version = "0.2", features = [ "process", "rt-threaded", "stream" ] }
+tokio1 = { package = "tokio", version = "1.0", features =  [ "full" ] }
 rand = "0.7"
 udp-over-tcp = { git = "https://github.com/mullvad/udp-over-tcp", rev = "942483b" }
 
