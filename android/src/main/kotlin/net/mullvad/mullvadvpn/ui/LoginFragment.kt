@@ -110,8 +110,11 @@ class LoginFragment :
 
     override fun onResume() {
         super.onResume()
-        paintNavigationBar(ContextCompat.getColor(requireContext(), R.color.darkBlue))
-        paintStatusBar(ContextCompat.getColor(requireContext(), R.color.blue))
+
+        jobTracker.newUiJob("paintBars") {
+            paintNavigationBar(ContextCompat.getColor(requireContext(), R.color.darkBlue))
+            paintStatusBar(ContextCompat.getColor(requireContext(), R.color.blue))
+        }
     }
 
     override fun onSafelyStop() {
