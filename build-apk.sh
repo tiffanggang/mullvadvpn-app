@@ -31,7 +31,6 @@ while [ ! -z "${1:-""}" ]; do
         GRADLE_TASK="assembleFdroid"
         BUNDLE_TASK="bundleFdroid"
         BUILT_APK_SUFFIX="-fdroid-unsigned"
-        EXTRA_WGGO_ARGS="--no-docker"
     elif [[ "${1:-""}" == "--app-bundle" ]]; then
         BUILD_BUNDLE="yes"
     fi

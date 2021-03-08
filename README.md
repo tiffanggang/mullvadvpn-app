@@ -179,11 +179,6 @@ cd android-ndk-r20b
 export ANDROID_NDK_HOME="$PWD"
 ```
 
-#### Docker
-
-Docker is required to build `wireguard-go` for Android. Follow the [installation
-instructions](https://docs.docker.com/engine/install/debian/) for your distribution.
-
 #### Configuring Rust
 
 These steps has to be done **after** you have installed Rust in the section below:
