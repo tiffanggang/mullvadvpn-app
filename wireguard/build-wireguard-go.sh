@@ -19,11 +19,11 @@ function is_docker_build {
     for arg in "$@"
     do
         case "$arg" in
-            "--no-docker")
-                return 1
+            "--docker")
+                return 0
         esac
     done
-    return 0
+    return 1
 }
 
 
