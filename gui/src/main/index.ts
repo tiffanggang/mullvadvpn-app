@@ -481,6 +481,7 @@ class ApplicationMain {
   }
 
   private onDaemonConnected = async () => {
+    const wasConnected = this.connectedToDaemon;
     this.connectedToDaemon = true;
 
     // subscribe to events
@@ -559,9 +560,10 @@ class ApplicationMain {
     // reset the reconnect backoff when connection established.
     this.reconnectBackoff.reset();
 
-    // notify renderer
-    if (this.windowController) {
-      IpcMainEventChannel.daemonConnected.notify(this.windowController.webContents);
+    // notify renderer, this.connectedToDaemon could have changed if the daemon disconnected again
+    // before this if-statement is reached.
+    if (this.windowController && !wasConnected && this.connectedToDaemon) {
+      IpcMainEventChannel.daemon.notifyConnected(this.windowController.webContents);
     }
 
     // show window when account is not set
@@ -581,9 +583,6 @@ class ApplicationMain {
     // Reset the daemon event listener since it's going to be invalidated on disconnect
     this.daemonEventListener = undefined;
 
-    // TODO: GRPC doesn't set an error, but without an error, the UI won't be updated
-    error = error === undefined && wasConnected ? new Error('Connection to daemon lost') : error;
-
     if (wasConnected) {
       this.connectedToDaemon = false;
 
@@ -592,10 +591,7 @@ class ApplicationMain {
 
       // notify renderer process
       if (this.windowController) {
-        IpcMainEventChannel.daemonDisconnected.notify(
-          this.windowController.webContents,
-          error ? error.message : undefined,
-        );
+        IpcMainEventChannel.daemon.notifyDisconnected(this.windowController.webContents);
       }
     }
 
